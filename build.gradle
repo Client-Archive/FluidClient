@@ -1,0 +1,136 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        jcenter()
+        maven {
+            name = "forge"
+            url = "https://files.minecraftforge.net/maven"
+        }
+        maven {
+            name = 'sponge'
+            url = 'https://repo.spongepowered.org/maven'
+        }
+    }
+    dependencies {
+        classpath 'net.minecraftforge.gradle:ForgeGradle:2.1-SNAPSHOT'
+        classpath 'org.spongepowered:mixingradle:0.6-SNAPSHOT'
+    }
+}
+
+apply plugin: 'net.minecraftforge.gradle.tweaker-client'
+apply plugin: 'org.spongepowered.mixin'
+apply plugin: 'java'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+version = "1.0"
+group = "com.fluid"
+
+compileJava.options.encoding = 'UTF-8'
+
+task deleteMixinCache {
+    delete files(System.getenv("APPDATA") + "\\.minecraft\\.mixin.out/audit/mixin_implementation_report.csv")
+}
+
+minecraft {
+    version = "1.8.9"
+    tweakClass = "com.fluid.client.mixin.Tweaker"
+    runDir = System.getenv("APPDATA") + "\\.minecraft"
+    mappings = "stable_22"
+    clientJvmArgs = ["-XX:-DisableExplicitGC"]
+    makeObfSourceJar = true
+}
+
+repositories {
+    maven {
+        name "jitpack"
+        url "https://jitpack.io"
+    }
+
+    maven {
+        name "spongepowered"
+        url "https://repo.spongepowered.org/maven/"
+    }
+    jcenter()
+    mavenCentral()
+}
+
+configurations {
+    embed
+    compile.extendsFrom(embed)
+}
+
+dependencies {
+    embed('org.spongepowered:mixin:0.7.11-SNAPSHOT') {
+        exclude module: 'launchwrapper'
+        exclude module: 'guava'
+        exclude module: 'gson'
+        exclude module: 'commons-io'
+    }
+    embed 'org.slick2d:slick2d-core:1.0.2'
+    embed 'com.google.code.gson:gson:2.8.5'
+    embed group: 'org.reflections', name: 'reflections', version: '0.9.10'
+    embed 'com.github.jagrosh:DiscordIPC:e29d6d8'
+    embed 'org.java-websocket:Java-WebSocket:1.5.2'
+
+    annotationProcessor("org.spongepowered:mixin:0.7.11-SNAPSHOT")
+
+    compile 'com.google.code.gson:gson:2.9.0'
+
+    compileOnly 'org.projectlombok:lombok:1.18.24'
+    annotationProcessor 'org.projectlombok:lombok:1.18.24'
+
+    testCompileOnly 'org.projectlombok:lombok:1.18.24'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.24'
+
+    // If you want to add a local library, drag it into the libs directory
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+}
+
+configurations {
+    extraLibs
+}
+
+mixin {
+    disableRefMapWarning = true
+    defaultObfuscationEnv notch
+    add sourceSets.main, "mixins.fluid.refmap.json"
+}
+
+processResources {
+    inputs.files "src/main/resources"
+    outputs.dir "build/classes/main"
+    copy {
+        from("src/main/resources")
+        into("build/classes/main")
+    }
+}
+
+jar {
+    from {
+        configurations.extraLibs.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+
+jar {
+    dependsOn configurations.compile
+    from {
+        configurations.embed.collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
+    }
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+    manifest.attributes(
+            "MixinConfigs": 'mixins.fluid.json',
+            "TweakClass": "com.fluid.client.mixin.Tweaker",
+            "TweakOrder": 0,
+            "Manifest-Version": 1.0
+    )
+
+    configurations.embed.each { dep ->
+        from(project.zipTree(dep)) {
+            exclude 'META-INF', 'META-INF/**'
+        }
+    }
+}

@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "compatibilityLevel": "JAVA_8",
+  "package": "com.fluid.client.mixin.impl",
+  "refmap": "mixins.fluid.refmap.json",
+  "verbose": true,
+  "mixins": [
+    "MixinMinecraft",
+    "entity.MixinEntityPlayerSP",
+    "gui.MixinGuiInGame"
+  ]
+}
